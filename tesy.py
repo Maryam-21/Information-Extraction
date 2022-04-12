@@ -1,9 +1,5 @@
-# import regex as re
 import spacy
 import data
-from spacy.matcher import Matcher
-
-from spacy import displacy
 
 nlp = spacy.load('en_core_web_sm', disable=['ner', 'textcat'])
 
@@ -18,16 +14,20 @@ def main():
         if (len(sents) !=0):
             for sent in sents:
                 services.append(sent)
-    noDuplicateServices = []
-    for service in services:
-        if service not in noDuplicateServices:
-            noDuplicateServices.append(service)
+
+    noDuplicateServices = removeDuplicates(services)
 
     for service in noDuplicateServices:
          print(i, " ", service)
          i += 1
 
 
+def removeDuplicates(listwithdup):
+    noduplist = []
+    for i in listwithdup:
+        if i not in noduplist:
+            noduplist.append(i)
+    return noduplist
 def subjectverbobjectrule(text):
     doc = nlp(text)
     sent = []
