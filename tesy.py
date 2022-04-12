@@ -6,7 +6,7 @@ nlp = spacy.load('en_core_web_sm', disable=['ner', 'textcat'])
 
 def main():
     # Meeting to be processed
-    text = data.getTestData("spotify")
+    text = data.getTestData("cr")
     i = 1
     services = []
     for t in text:
@@ -28,6 +28,7 @@ def removeDuplicates(listwithdup):
         if i not in noduplist:
             noduplist.append(i)
     return noduplist
+
 def subjectverbobjectrule(text):
     doc = nlp(text)
     sent = []
@@ -42,27 +43,20 @@ def subjectverbobjectrule(text):
             # only extract noun or pronoun subjects
             for subtok in token.rights:
                 # save the object in the phrase
-                if (subtok.dep_ in ['dobj','attr']) and (subtok.pos_ in ['NOUN', 'PROPN']):
+                if (subtok.dep_ in ['dobj','attr','prep']) and (subtok.pos_ in ['NOUN', 'PROPN','ADP']):
                     index = subtok.i
                     if adjectiveNounRule(text,index):
                         phrase += adjectiveNounRule(text,index) + ' ' + subtok.text
+                    elif subtok.pos_ == 'ADP':
+                        phrase = prepositionsRule(subtok.i,text)
                     else:
                         phrase += ' ' + subtok.text
+
                     for sub_tok in token.lefts:
                         if (sub_tok.dep_ in ['nsubj', 'nsubjpass']) and (sub_tok.pos_ in ['NOUN', 'PROPN', 'PRON']):
                             # add subject to the phrase
                             phrase = sub_tok.text + " " + phrase
-                #elif subtok.pos_ in ['ADP']:
-                    #phrase = rule3_mod(subtok,text)
-                #   if subtok.head.pos_=='NOUN':
-                #        phrase += subtok.head.text
-                #        phrase += ' ' + subtok.text
-                #    for sub_tok in token.lefts:
-                #        if (sub_tok.dep_ in ['nsubj', 'nsubjpass']) and (sub_tok.pos_ in ['NOUN', 'PROPN', 'PRON']):
-                            # add subject to the phrase
-                #            phrase = sub_tok.text + " " + phrase
 
-                    # save the root of the verb in phrase
                     sent.append(phrase)
 
     return sent
@@ -84,35 +78,30 @@ def adjectiveNounRule(text, index):
     return phrase
 
 
-def prepositionsRule(text):
+def prepositionsRule(index,text):
     doc = nlp(text)
-
+    token = doc[index]
     sent = []
 
-    for token in doc:
+    # look for prepositions
+    phrase = ''
 
-        # look for prepositions
-        if token.pos_ == 'ADP':
+    # if its head word is a noun
+    if token.head.pos_ in ['NOUN', 'PROPN','VERB']:
 
-            phrase = ''
+        # append noun and preposition to phrase
+        phrase += token.head.text
+        phrase += ' ' + token.text
 
-            # if its head word is a noun
-            if token.head.pos_ == 'NOUN':
+        # check the nodes to the right of the preposition
+        for right_tok in token.rights:
+            # append if it is a noun or proper noun
+            if (right_tok.dep_ == 'pobj'):
+                phrase += ' ' + right_tok.text
 
-                # append noun and preposition to phrase
-                phrase += token.head.text
-                phrase += ' ' + token.text
+        if len(phrase) > 2:
+           return phrase
 
-                # check the nodes to the right of the preposition
-                for right_tok in token.rights:
-                    # append if it is a noun or proper noun
-                    if (right_tok.pos_ in ['NOUN', 'PROPN']):
-                        phrase += ' ' + right_tok.text
-
-                if len(phrase) > 2:
-                    sent.append(phrase)
-
-    return sent
 
 
 def rule0(text, index):
@@ -134,7 +123,7 @@ def rule0(text, index):
 def rule3_mod(token,text):
     phrase=""
     sent=[]
-    if token.head.pos_ == 'NOUN':
+    if token.head.pos_ in ['NOUN', 'PROPN','VERB']:
 
         # appended rule
         append = rule0(text, token.head.i)
